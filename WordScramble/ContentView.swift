@@ -20,6 +20,8 @@ struct ContentView: View {
     @State private var errorMessage = ""
     @State private var showingError = false
     
+    @State private var score = 0
+    
     var body: some View {
         NavigationView {
             List {
@@ -36,7 +38,9 @@ struct ContentView: View {
                             // id: \.self tells swift that every item in the usedWords array is unique
                         }
                     }
+                  
                 }
+ 
             }
             .navigationTitle(rootWord)
             .onSubmit(addNewWord)
@@ -47,44 +51,63 @@ struct ContentView: View {
             } message: {
                 Text(errorMessage)
             }
+            .toolbar {
+                Button("New Game", action: startGame)
+            }
+            .safeAreaInset(edge: .bottom) {
+                Text("Score: \(score)")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(.blue)
+                    .foregroundColor(.white)
+                    .font(.title)
+
+            }
         }
     }
     
     func addNewWord() {
         let answer = newWord.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         
-        guard answer.count > 0 else { return }
-        
+        guard answer.count > 3 else {
+            wordError(title: "Too short", message: "Words must be at least 4 letters long.")
+            return
+        }
+        guard answer != rootWord else {
+            wordError(title: "Nice try...", message: "You cannot use the starting word")
+            return
+        }
         guard isOriginal(word: answer) else {
             wordError(title: "Word used already", message: "Be more original")
             return
         }
-        
         guard isPossible(word: answer) else {
             wordError(title: "Word not possible", message: "You can't spell that word from '\(rootWord)'!")
             return
         }
-        
         guard isReal(word: answer) else {
             wordError(title: "Word not recognized", message: "You can't just make them up, you know!")
             return
         }
-
-        
         withAnimation {
             usedWords.insert(answer, at: 0)
         }
         newWord = ""
+        score += answer.count
     }
     
     func startGame() {
+        score = 0
+        newWord = ""
+        usedWords.removeAll()
+        
 //        1. Find the URL for start.txt in our app bundle
         if let startWordsURL = Bundle.main.url(forResource: "start", withExtension: "txt") {
 //            2. Load start.txt into a string
             if let startWords = try? String(contentsOf: startWordsURL){
 //                3. Split the string into an array of strings, splitting on line breaks
                 let allWords = startWords.components(separatedBy: "\n")
-//                4. Pick one random word, or use "silkwordm" as a default
+//                4. Pick one random word, or use "silkworm" as a default
                 rootWord = allWords.randomElement() ?? "silkworm"
                 
                 return
@@ -92,6 +115,7 @@ struct ContentView: View {
         }
         fatalError("Could not load start.txt from bundle.")
     }
+
     
 //    Return true or false depending on whether the worde has been used before or not
     func isOriginal(word: String) -> Bool {
